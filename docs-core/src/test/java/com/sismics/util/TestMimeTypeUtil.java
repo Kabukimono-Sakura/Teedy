@@ -69,4 +69,31 @@ public class TestMimeTypeUtil extends BaseTest {
         path = Paths.get(getResource(FILE_MP4).toURI());
         Assert.assertEquals(MimeType.VIDEO_MP4, MimeTypeUtil.guessMimeType(path, FILE_MP4));
     }
+
+    /**
+     * 测试 getFileExtension() 的所有 switch 分支。在系统需要给文件命名或保存时，把内部的 MIME 类型转换成用户可见的扩展名后缀
+     *
+     * 原始测试只覆盖了 guessMimeType()，而 getFileExtension() 的 switch 语句
+     * 共 12 个分支（11 个具名 case + 1 个 default）全部未被执行，
+     * 导致该方法 instruction coverage 和 branch coverage 均为 0%。
+     * 此方法覆盖全部 12 个分支，直接提升这两项指标。
+     */
+    @Test
+    public void testGetFileExtension() {
+        // 覆盖 switch 的 11 个具名 case 分支
+        Assert.assertEquals("zip",  MimeTypeUtil.getFileExtension(MimeType.APPLICATION_ZIP));
+        Assert.assertEquals("gif",  MimeTypeUtil.getFileExtension(MimeType.IMAGE_GIF));
+        Assert.assertEquals("jpg",  MimeTypeUtil.getFileExtension(MimeType.IMAGE_JPEG));
+        Assert.assertEquals("png",  MimeTypeUtil.getFileExtension(MimeType.IMAGE_PNG));
+        Assert.assertEquals("pdf",  MimeTypeUtil.getFileExtension(MimeType.APPLICATION_PDF));
+        Assert.assertEquals("odt",  MimeTypeUtil.getFileExtension(MimeType.OPEN_DOCUMENT_TEXT));
+        Assert.assertEquals("docx", MimeTypeUtil.getFileExtension(MimeType.OFFICE_DOCUMENT));
+        Assert.assertEquals("txt",  MimeTypeUtil.getFileExtension(MimeType.TEXT_PLAIN));
+        Assert.assertEquals("csv",  MimeTypeUtil.getFileExtension(MimeType.TEXT_CSV));
+        Assert.assertEquals("mp4",  MimeTypeUtil.getFileExtension(MimeType.VIDEO_MP4));
+        Assert.assertEquals("webm", MimeTypeUtil.getFileExtension(MimeType.VIDEO_WEBM));
+
+        // 覆盖 default 分支：传入未在 switch 中定义的 MIME 类型，应返回通用扩展名 "bin"
+        Assert.assertEquals("bin",  MimeTypeUtil.getFileExtension("application/unknown"));
+    }
 }

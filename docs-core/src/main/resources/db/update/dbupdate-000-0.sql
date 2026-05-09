@@ -35,6 +35,7 @@ create index IDX_LOG_IDENTITY_C on T_AUDIT_LOG (LOG_IDENTITY_C);
 
 insert into T_CONFIG(CFG_ID_C, CFG_VALUE_C) values('DB_VERSION', '0');
 insert into T_CONFIG(CFG_ID_C, CFG_VALUE_C) values('LUCENE_DIRECTORY_STORAGE', 'FILE');
+insert into T_CONFIG(CFG_ID_C, CFG_VALUE_C) values('GUEST_LOGIN', 'true');
 insert into T_BASE_FUNCTION(BAF_ID_C) values('ADMIN');
 insert into T_LOCALE(LOC_ID_C) values('en');
 insert into T_LOCALE(LOC_ID_C) values('fr');

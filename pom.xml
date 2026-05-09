@@ -58,9 +58,23 @@
     <!-- Plugins version -->
     <org.apache.maven.plugins.maven-antrun-plugin.version>3.1.0</org.apache.maven.plugins.maven-antrun-plugin.version>
     <org.apache.maven.plugins.maven-jar-plugin.version>3.3.0</org.apache.maven.plugins.maven-jar-plugin.version>
+
+    <!-- PMD/CPD 插件版本 -->
+    <org.apache.maven.plugins.maven-pmd-plugin.version>3.28.0</org.apache.maven.plugins.maven-pmd-plugin.version>
+
     <org.apache.maven.plugins.maven-war-plugin.version>3.3.2</org.apache.maven.plugins.maven-war-plugin.version>
     <org.apache.maven.plugins.maven-surefire-plugin.version>3.0.0</org.apache.maven.plugins.maven-surefire-plugin.version>
     <org.eclipse.jetty.jetty-maven-plugin.version>11.0.20</org.eclipse.jetty.jetty-maven-plugin.version>
+
+    <!-- PMD 规则集文件路径 -->
+    <pmd.ruleset.file>${maven.multiModuleProjectDirectory}/pmd-ruleset.xml</pmd.ruleset.file>
+
+    <!-- JaCoCo 插件版本 -->
+    <org.jacoco.jacoco-maven-plugin.version>0.8.11</org.jacoco.jacoco-maven-plugin.version>
+
+    <!-- JaCoCo agent 参数占位符，prepare-agent 会在运行时替换此值；
+         显式声明空值是为了防止子模块中 @{argLine} 在 JaCoCo 未触发时报错 -->
+    <argLine></argLine>
   </properties>
 
   <scm>
@@ -80,6 +94,16 @@
       </snapshots>
     </repository>
   </repositories>
+
+  <distributionManagement>
+    <site>
+      <id>docs-site</id>
+      <!-- 必须用 ${project.build.directory}，它在每个子模块中解析结果不同
+           （父模块=target/staging, docs-core=docs-core/target/staging ...）
+           Maven 才能正确计算模块间相对链接；若改为固定路径，所有模块 URL 相同，链接全部失效 -->
+      <url>file://${project.build.directory}/staging</url>
+    </site>
+  </distributionManagement>
 
   <build>
     <plugins>
@@ -108,7 +132,34 @@
         <configuration>
           <forkCount>1</forkCount>
           <reuseForks>false</reuseForks>
+          <!-- @{argLine} 使用延迟求值，确保 JaCoCo prepare-agent 注入的
+               -javaagent 参数能传递给 fork 出的测试 JVM -->
+          <argLine>@{argLine}</argLine>
         </configuration>
+      </plugin>
+
+      <!-- JaCoCo 覆盖率插件：在测试阶段收集数据，之后生成 HTML/XML/CSV 报告 -->
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>${org.jacoco.jacoco-maven-plugin.version}</version>
+        <executions>
+          <!-- 在测试前启动 JaCoCo Agent，将覆盖率数据写入 target/jacoco.exec -->
+          <execution>
+            <id>jacoco-prepare-agent</id>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+          </execution>
+          <!-- 在 test 阶段结束后，根据 jacoco.exec 生成报告到 target/site/jacoco/ -->
+          <execution>
+            <id>jacoco-report</id>
+            <phase>test</phase>
+            <goals>
+              <goal>report</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
 
       <plugin>
@@ -116,8 +167,130 @@
         <artifactId>jetty-maven-plugin</artifactId>
         <version>${org.eclipse.jetty.jetty-maven-plugin.version}</version>
       </plugin>
+
+      <!-- PMD/CPD 插件构建配置：执行代码质量和重复代码检查 -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-pmd-plugin</artifactId>
+        <version>${org.apache.maven.plugins.maven-pmd-plugin.version}</version>
+        <configuration>
+          <targetJdk>${maven.compiler.source}</targetJdk>
+          <linkXRef>false</linkXRef>
+          <failOnViolation>false</failOnViolation>
+          <printFailingErrors>true</printFailingErrors>
+          <rulesets>
+            <ruleset>${pmd.ruleset.file}</ruleset>
+          </rulesets>
+          <!-- CPD 配置：设置触发重复警告的最小代码行数，默认为 100 -->
+          <minimumTokens>100</minimumTokens>
+        </configuration>
+        <executions>
+          <execution>
+            <id>practice-7-pmd-check</id>
+            <phase>verify</phase>
+            <goals>
+              <!-- 运行代码规范检查 -->
+              <goal>check</goal>
+              <!-- 运行 CPD (Copy-Paste Detector) 重复代码检查 -->
+              <goal>cpd-check</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-site-plugin</artifactId> 
+        <version>3.12.1</version>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-project-info-reports-plugin</artifactId>
+        <version>3.4.1</version>
+      </plugin>
     </plugins>
   </build>
+
+  <!-- Reporting 配置：定义在 mvn site 生成的网页中展示哪些报告 -->
+  <reporting>
+    <plugins>
+      <!-- Surefire Report：在 Site 的 Project Reports 中展示测试结果汇总 -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-report-plugin</artifactId>
+        <version>${org.apache.maven.plugins.maven-surefire-plugin.version}</version>
+        <reportSets>
+          <reportSet>
+            <id>aggregate</id>
+            <!-- inherited=false：聚合报告只在声明它的父模块生成，不继承到子模块 -->
+            <inherited>false</inherited>
+            <reports>
+              <report>report</report>
+            </reports>
+            <configuration>
+              <!-- aggregate=true：收集所有子模块的测试结果合并成一份报告 -->
+              <aggregate>true</aggregate>
+            </configuration>
+          </reportSet>
+        </reportSets>
+      </plugin>
+
+      <!-- JaCoCo 报告：每个模块自己的覆盖率（JaCoCo）+ 跨模块汇总（JaCoCo Aggregate） -->
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>${org.jacoco.jacoco-maven-plugin.version}</version>
+        <reportSets>
+          <!-- 默认 reportSet：每个子模块各自生成 JaCoCo 报告，会被子模块继承 -->
+          <reportSet>
+            <reports>
+              <report>report</report>
+            </reports>
+          </reportSet>
+          <!-- aggregate reportSet：聚合所有子模块数据，仅在父模块生成 JaCoCo Aggregate 报告 -->
+          <reportSet>
+            <id>aggregate</id>
+            <inherited>false</inherited>
+            <reports>
+              <report>report-aggregate</report>
+            </reports>
+          </reportSet>
+        </reportSets>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-pmd-plugin</artifactId>
+        <version>${org.apache.maven.plugins.maven-pmd-plugin.version}</version>
+        <configuration>
+          <targetJdk>${maven.compiler.source}</targetJdk>
+          <linkXRef>false</linkXRef>
+          <rulesets>
+            <ruleset>${pmd.ruleset.file}</ruleset>
+          </rulesets>
+        </configuration>
+        <reportSets>
+          <reportSet>
+            <!-- 生成子模块的 PMD 和 CPD 报告 -->
+            <reports>
+              <report>pmd</report>
+              <report>cpd</report> <!-- 关键：添加 CPD 报告 -->
+            </reports>
+          </reportSet>
+          <reportSet>
+            <id>aggregate</id>
+            <inherited>false</inherited>
+            <!-- 生成根模块聚合所有子模块结果的 PMD 和 CPD 报告 -->
+            <reports>
+              <report>aggregate-pmd</report>
+              <report>aggregate-cpd</report> <!-- 关键：添加聚合 CPD 报告 -->
+            </reports>
+          </reportSet>
+        </reportSets>
+      </plugin>
+    </plugins>
+  </reporting>
 
   <modules>
     <module>docs-core</module>
