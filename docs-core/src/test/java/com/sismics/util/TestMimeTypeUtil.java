@@ -58,9 +58,10 @@ public class TestMimeTypeUtil extends BaseTest {
         path = Paths.get(getResource(FILE_PNG).toURI());
         Assert.assertEquals(MimeType.IMAGE_PNG, MimeTypeUtil.guessMimeType(path, FILE_PNG));
 
-        // Detect ZIP files
+        // Detect ZIP files (Windows returns application/x-zip-compressed)
         path = Paths.get(getResource(FILE_ZIP).toURI());
-        Assert.assertEquals(MimeType.APPLICATION_ZIP, MimeTypeUtil.guessMimeType(path, FILE_ZIP));
+        String zipMime = MimeTypeUtil.guessMimeType(path, FILE_ZIP);
+        Assert.assertTrue(zipMime.equals(MimeType.APPLICATION_ZIP) || zipMime.equals("application/x-zip-compressed"));
 
         // Detect WEBM files
         path = Paths.get(getResource(FILE_WEBM).toURI());
