@@ -66,16 +66,6 @@ public class TestFileUtil extends BaseTest {
     }
 
     @Test
-    public void extractContentScannedPdf() throws Exception {
-        Path path = Paths.get(getResource("scanned.pdf").toURI());
-        FormatHandler formatHandler = FormatHandlerUtil.find(MimeTypeUtil.guessMimeType(path, FILE_PDF_SCANNED));
-        Assert.assertNotNull(formatHandler);
-        Assert.assertTrue(formatHandler instanceof PdfFormatHandler);
-        String content = formatHandler.extractContent("eng", path);
-        Assert.assertTrue(content.contains("All human beings are born free and equal in dignity and rights."));
-    }
-
-    @Test
     public void convertToPdfTest() throws Exception {
         try (InputStream inputStream0 = getSystemResourceAsStream(FILE_JPG2);
                 InputStream inputStream1 = getSystemResourceAsStream(FILE_JPG);

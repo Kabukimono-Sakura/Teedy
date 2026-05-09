@@ -37,9 +37,10 @@ public class TestMimeTypeUtil extends BaseTest {
         path = Paths.get(getResource(FILE_TXT).toURI());
         Assert.assertEquals(MimeType.TEXT_PLAIN, MimeTypeUtil.guessMimeType(path, FILE_TXT));
 
-        // Detect CSV files
+        // Detect CSV files (Windows returns application/vnd.ms-excel)
         path = Paths.get(getResource(FILE_CSV).toURI());
-        Assert.assertEquals(MimeType.TEXT_CSV, MimeTypeUtil.guessMimeType(path, FILE_CSV));
+        String csvMime = MimeTypeUtil.guessMimeType(path, FILE_CSV);
+        Assert.assertTrue(csvMime.equals(MimeType.TEXT_CSV) || csvMime.equals("application/vnd.ms-excel"));
 
         // Detect PDF files
         path = Paths.get(getResource(FILE_PDF).toURI());
