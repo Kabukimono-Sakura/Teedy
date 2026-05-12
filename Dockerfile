@@ -1,10 +1,13 @@
+# 使用包含 Ubuntu 22.04 的自定义镜像
 FROM ubuntu:22.04
+
+# 使用 LABEL 指令添加元数据，设置镜像维护者的邮箱
 LABEL maintainer="b.gamard@sismics.com"
 
-# Run Debian in non interactive mode
+# 设置 Debian 安装为非交互模式
 ENV DEBIAN_FRONTEND noninteractive
 
-# Configure env
+# 配置环境变量
 ENV LANG C.UTF-8
 ENV LC_ALL C.UTF-8
 ENV JAVA_HOME /usr/lib/jvm/java-11-openjdk-amd64/
@@ -12,7 +15,7 @@ ENV JAVA_OPTIONS -Dfile.encoding=UTF-8 -Xmx1g
 ENV JETTY_VERSION 11.0.20
 ENV JETTY_HOME /opt/jetty
 
-# Install packages
+# 安装必要软件包和 OCR 语言包，并清理无用文件以减小镜像体积
 RUN apt-get update && \
     apt-get -y -q --no-install-recommends install \
     vim less procps unzip wget tzdata openjdk-11-jdk \
@@ -48,9 +51,11 @@ RUN apt-get update && \
     tesseract-ocr-sqi \
     && apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+
+# 非交互式重新配置时区数据
 RUN dpkg-reconfigure -f noninteractive tzdata
 
-# Install Jetty
+# 安装 Jetty 服务器
 RUN wget -nv -O /tmp/jetty.tar.gz \
     "https://repo1.maven.org/maven2/org/eclipse/jetty/jetty-home/${JETTY_VERSION}/jetty-home-${JETTY_VERSION}.tar.gz" \
     && tar xzf /tmp/jetty.tar.gz -C /opt \
@@ -60,16 +65,22 @@ RUN wget -nv -O /tmp/jetty.tar.gz \
     && mkdir /opt/jetty/webapps \
     && chmod +x /opt/jetty/bin/jetty.sh
 
+# 告知 Docker 容器在运行时监听 8080 端口
 EXPOSE 8080
 
-# Install app
+# 安装应用程序
 RUN mkdir /app && \
     cd /app && \
     java -jar /opt/jetty/start.jar --add-modules=server,http,webapp,deploy
 
+# 将本地的 docs.xml 和构建好的 WAR 包添加到容器的 Jetty Web 应用目录
+# 这允许 Jetty 在启动时加载这些 Web 应用
 ADD docs.xml /app/webapps/docs.xml
 ADD docs-web/target/docs-web-*.war /app/webapps/docs.war
 
+# 为随后的 RUN, CMD, ENTRYPOINT, COPY 和 ADD 指令设置工作目录
 WORKDIR /app
 
+# 设置容器启动时默认执行的命令
+# 这里指令容器通过 Java 执行 start.jar 来启动 Jetty Web 服务器
 CMD ["java", "-jar", "/opt/jetty/start.jar"]
