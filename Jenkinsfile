@@ -38,8 +38,10 @@ pipeline {
         // 第三阶段：将镜像上传到 Docker Hub
         stage('Upload image') {
             steps {
-                // 使用 docker login 直接登录（避免 Docker Pipeline 插件在 Windows 上的路径问题）
-                sh "echo ${DOCKER_HUB_CREDENTIALS_PSW} | docker login -u ${DOCKER_HUB_CREDENTIALS_USR} --password-stdin"
+                // 使用 withCredentials 安全地传递凭据，避免 Groovy 字符串插值泄露密码
+                withCredentials([usernamePassword(credentialsId: 'Docker-Hub', usernameVariable: 'DOCKER_USR', passwordVariable: 'DOCKER_PSW')]) {
+                    sh 'echo $DOCKER_PSW | docker login -u $DOCKER_USR --password-stdin'
+                }
                 // 推送带构建编号的版本
                 sh "docker push ${env.DOCKER_IMAGE}:${env.DOCKER_TAG}"
                 // 同时推送一个名为 latest 的标签
