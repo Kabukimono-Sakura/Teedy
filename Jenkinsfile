@@ -4,7 +4,7 @@ pipeline {
     environment {
         // 定义环境变量 - Jenkins 凭据配置
         // 需提前在 Jenkins 凭据管理中创建 ID 为 'dockerhub_credentials' 的凭据
-        DOCKER_HUB_CREDENTIALS = credentials('dockerhub_credentials')
+        DOCKER_HUB_CREDENTIALS = credentials('Docker-Hub')
         
         // Docker Hub 仓库名称
         DOCKER_IMAGE = 'kabukimonosakura/teedyjenkins'
@@ -42,7 +42,7 @@ pipeline {
             steps {
                 script {
                     // 使用 registry 地址和凭据登录并推送
-                    docker.withRegistry('https://registry.hub.docker.com', 'dockerhub_credentials') {
+                    docker.withRegistry('https://registry.hub.docker.com', 'Docker-Hub') {
                         // 推送带构建编号的版本
                         docker.image("${env.DOCKER_IMAGE}:${env.DOCKER_TAG}").push()
                         
