@@ -6,8 +6,8 @@ pipeline {
         // 需提前在 Jenkins 凭据管理中创建 ID 为 'dockerhub_credentials' 的凭据
         DOCKER_HUB_CREDENTIALS = credentials('dockerhub_credentials')
         
-        // Docker Hub 仓库名称（请将 xx 修改为您真实的用户名）
-        DOCKER_IMAGE = 'xx/teedy-app' 
+        // Docker Hub 仓库名称
+        DOCKER_IMAGE = 'kabukimonosakura/teedyjenkins'
         
         // 使用 Jenkins 的构建编号作为 Docker 镜像的 Tag
         DOCKER_TAG = "${env.BUILD_NUMBER}"
@@ -20,7 +20,7 @@ pipeline {
                 checkout scmGit(
                     branches: [[name: '*/master']], 
                     extensions: [], 
-                    userRemoteConfigs: [[url: 'https://github.com/xx/Teedy.git']]
+                    userRemoteConfigs: [[url: 'https://github.com/Kabukimono-Sakura/Teedy.git']]
                 )
                 // 执行 Maven 打包，跳过测试
                 sh 'mvn -B -DskipTests clean package'
@@ -53,20 +53,30 @@ pipeline {
             }
         }
 
-        // 第四阶段：在当前服务器上运行容器
+        // 第四阶段：在当前服务器上运行三个容器
         stage('Run containers') {
             steps {
                 script {
-                    // 停止并删除已存在的同名容器，防止端口冲突（|| true 确保即使没有旧容器也不会报错）
-                    sh 'docker stop teedy-container-8081 || true'
-                    sh 'docker rm teedy-container-8081 || true'
-                    
-                    // 运行新容器，映射宿主机 8081 到容器 8080
+                    // 停止并删除已存在的同名容器，防止端口冲突
+                    sh 'docker stop teedy-container-8082 || true'
+                    sh 'docker rm teedy-container-8082 || true'
+                    sh 'docker stop teedy-container-8083 || true'
+                    sh 'docker rm teedy-container-8083 || true'
+                    sh 'docker stop teedy-container-8084 || true'
+                    sh 'docker rm teedy-container-8084 || true'
+
+                    // 运行三个容器，分别映射 8082、8083、8084 到容器 8080
                     docker.image("${env.DOCKER_IMAGE}:${env.DOCKER_TAG}").run(
-                        '--name teedy-container-8081 -d -p 8081:8080'
+                        '--name teedy-container-8082 -d -p 8082:8080'
                     )
-                    
-                    // （可选）查看容器运行状态
+                    docker.image("${env.DOCKER_IMAGE}:${env.DOCKER_TAG}").run(
+                        '--name teedy-container-8083 -d -p 8083:8080'
+                    )
+                    docker.image("${env.DOCKER_IMAGE}:${env.DOCKER_TAG}").run(
+                        '--name teedy-container-8084 -d -p 8084:8080'
+                    )
+
+                    // 查看容器运行状态
                     sh 'docker ps --filter "name=teedy-container"'
                 }
             }
